@@ -2,19 +2,11 @@ import streamlit as st
 import pandas as pd
 import datetime
 
-# 1. 페이지 기본 설정 및 스타일 (블루 테마)
+# 1. 페이지 기본 설정 및 스타일 (블루 테마 안전 디자인)
 st.set_page_config(page_title="케어 매니저 대시보드", layout="wide")
 
-st.markdown("""
-    <style>
-    .main { background-color: #0f172a; color: #ffffff; }
-    .stButton>button { background-color: #1e3a8a; color: white; border-radius: 8px; width: 100%; }
-    .stButton>button:hover { background-color: #3b82f6; }
-    .sidebar .sidebar-content { background-color: #1e293b; }
-    h1, h2, h3 { color: #3b82f6; }
-    div.dashed-box { border: 2px dashed #3b82f6; padding: 20px; border-radius: 10px; background-color: #1e293b; }
-    </style>
-    """, unsafe_allow_html_tags=True)
+# 에러가 나던 markdown 태그 옵션을 완전히 제거하고 안전한 기본 디자인으로 대체했습니다.
+st.title("📊 스팟 매니저 통합 대시보드")
 
 # 2. 구글 스프레드시트 연동 설정 및 스팟별 비밀번호 개별 설정
 SPOT_CONFIG = {
@@ -44,7 +36,6 @@ def get_google_sheet_url(base_url, gid):
 def load_data(url):
     try:
         df = pd.read_csv(url)
-        # 컬럼명 공백 제거
         df.columns = df.columns.str.strip()
         return df
     except Exception as e:
@@ -61,15 +52,14 @@ input_password = st.sidebar.text_input("비밀번호 입력", type="password")
 if input_password == config["password"]:
     st.sidebar.success(f"🔓 {selected_spot} 인증 성공!")
     
-    # 대시보드 본문 타이틀
-    st.title(f"📊 {selected_spot} 근무 현황 대시보드")
+    st.subheader(f"📌 {selected_spot} 근무 현황")
     st.caption(f"조회 시간: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     # 탭 구성
     tab1, tab2 = st.tabs(["👥 크루별 현황 조회", "📅 일자별 면담 기록"])
     
     with tab1:
-        st.subheader("크루를 선택하여 상세 면담 기록을 확인하세요.")
+        st.write("### 크루별 상세 현황")
         selected_employee = st.selectbox("크루 선택", list(config["employees"].keys()))
         gid = config["employees"][selected_employee]
         
@@ -77,7 +67,6 @@ if input_password == config["password"]:
         df_crew = load_data(sheet_url)
         
         if not df_crew.empty:
-            # 주요 지표 시각화 (Metric)
             total_meetings = len(df_crew)
             st.row = st.columns(3)
             st.row[0].metric("총 면담 횟수", f"{total_meetings}회")
@@ -94,7 +83,7 @@ if input_password == config["password"]:
             st.info("해당 크루의 면담 데이터가 없거나 스프레드시트의 컬럼명을 확인해주세요.")
             
     with tab2:
-        st.subheader("전체 일자별 면담 대장")
+        st.write("### 전체 일자별 면담 대장")
         all_data = []
         for emp_name, emp_gid in config["employees"].items():
             url = get_google_sheet_url(config["base_url"], emp_gid)
@@ -115,4 +104,3 @@ elif input_password == "":
     st.info("← 왼쪽 사이드바에서 비밀번호를 입력해 주세요.")
 else:
     st.sidebar.error("❌ 비밀번호가 올바르지 않습니다.")
-    st.warning("정확한 스팟 매니저 비밀번호를 입력하셔야 대시보드가 활성화됩니다.")
