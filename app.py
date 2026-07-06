@@ -14,7 +14,7 @@ st.markdown("""
     h1, h2, h3 { color: #3b82f6; }
     div.dashed-box { border: 2px dashed #3b82f6; padding: 20px; border-radius: 10px; background-color: #1e293b; }
     </style>
-    """, unsafe_allow_name_tags=True)
+    """, unsafe_allow_html_tags=True)
 
 # 2. 구글 스프레드시트 연동 설정 및 스팟별 비밀번호 개별 설정
 SPOT_CONFIG = {
