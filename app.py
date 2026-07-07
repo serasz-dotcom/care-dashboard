@@ -137,7 +137,7 @@ SPOT_CONFIG = {
         }
     }
 }
-GEMINI_API_KEY = "AIzaSyB764ZHJR-NqWF7h4kqLkSTAALoGj06RBo"
+GEMINI_API_KEY = "AQ.Ab8RN6LHyW0ZveQOsrc_6nGFB9tSqA71glqGaH4NxDP311UdRA"
 # =========================================================================
 
 # --- 세션 검사 및 초기화 ---
