@@ -110,7 +110,7 @@ def load_sheet_data(spreadsheet_id, sheet_name):
         
         # 💡 [핵심] 딱 데이터가 있는 A열부터 F열까지만 안전하게 잘라서 가져옵니다.
         # 이렇게 하면 오른쪽에 빈 칸(공백)이 아무리 많아도 중복 에러가 나지 않습니다!
-        raw_data = worksheet.get("A1:F1000")
+        raw_data = worksheet.get("A9:F1000")
         
         if not raw_data:
             return worksheet, pd.DataFrame()
