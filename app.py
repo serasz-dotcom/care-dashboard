@@ -107,9 +107,28 @@ def load_sheet_data(spreadsheet_id, sheet_name):
         gc = get_gspread_client()
         sh = gc.open_by_key(spreadsheet_id)
         worksheet = sh.worksheet(sheet_name)
-        data = worksheet.get_all_records()
-        df = pd.DataFrame(data)
-        df.columns = df.columns.str.strip()
+        
+        # 💡 [핵심] 딱 데이터가 있는 A열부터 F열까지만 안전하게 잘라서 가져옵니다.
+        # 이렇게 하면 오른쪽에 빈 칸(공백)이 아무리 많아도 중복 에러가 나지 않습니다!
+        raw_data = worksheet.get("A1:F1000")
+        
+        if not raw_data:
+            return worksheet, pd.DataFrame()
+            
+        headers = [str(h).strip() for h in raw_data[0]]
+        rows = raw_data[1:]
+        
+        if not rows:
+            df = pd.DataFrame(columns=headers)
+            return worksheet, df
+            
+        padded_rows = []
+        for r in rows:
+            if len(r) < len(headers):
+                r = r + [""] * (len(headers) - len(r))
+            padded_rows.append(r[:len(headers)])
+            
+        df = pd.DataFrame(padded_rows, columns=headers)
         return worksheet, df
     except Exception as e:
         st.error(f"시트 데이터를 읽어오는 중 오류가 발생했습니다: {e}")
