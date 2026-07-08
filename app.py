@@ -47,7 +47,7 @@ div.block-container { padding-top: 1.5rem !important; padding-bottom: 1.5rem !im
 # =========================================================================
 # 🛠️ [환경설정] 매니저님의 발급 데이터 입력 구역
 # =========================================================================
-GEMINI_API_KEY = "AQ.Ab8RN6LHyW0ZveQOsrc_6nGFB9tSqA71gIqGaH4NxDP311UdrA"
+GEMINI_API_KEY = "c1d5423b657ff8d3f312e557962be880da2ffd71"
 
 # 구글 서비스 계정 JSON 키 데이터 바인딩
 CREDENTIALS_DICT = {
