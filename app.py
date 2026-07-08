@@ -63,7 +63,7 @@ SPOT_CONFIG = {
     "사내카페 (kafe5)": {
         "spreadsheet_id": "1rRpq9zX7g70hX2uwRwA1enPY83KSK_lNOiJ1MGIOzqY",
         "password": "kafe5",
-        "employees": ["루크(장종원)", "앤버", "아이사"]
+        "employees": ["루크", "휴버트"]
     },
     "행정지원스팟 (office7)": {
         "spreadsheet_id": "여기에_행정지원_시트_ID_입력", 
