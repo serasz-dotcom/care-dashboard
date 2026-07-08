@@ -210,31 +210,59 @@ with col3:
 st.markdown("<hr style='margin-top:10px; margin-bottom:20px; border-top:1px solid #e2e8f0;'>", unsafe_allow_html=True)
 
 if st.session_state["active_tab"] == "면담일지":
-    st.subheader("📋 실시간 면담 일지 피드")
-    if final_df.empty:
-        st.info("현재 등록된 면담 일지 데이터가 없습니다. 첫 기록을 등록해 보세요!")
-    else:
-        category_filter = st.selectbox("정렬 카테고리 필터", ["전체 구분", "월 면담", "근무 리뷰", "위생", "기타 사항"])
-        display_df = final_df.copy()
-        if '일자' in display_df.columns:
-            display_df = display_df.sort_values(by='일자', ascending=False)
-        if category_filter != "전체 구분":
-            display_df = display_df[display_df['구분'] == category_filter]
-        for _, row in display_df.iterrows():
-            tag_class = "review" if "리뷰" in str(row.get('구분','')) else "interview" if "면담" in str(row.get('구분','')) else "hygiene"
-            st.markdown(f"""
-            <div class='log-feed-card'>
-                <div class='log-header'>
-                    <div>
-                        <span class='log-date'>📅 {row.get('일자','')}</span>
-                        <span class='log-tag {tag_class}'>{row.get('구분','기타')}</span>
-                        <span style='font-size:12px; color:#64748b; margin-left:8px;'>{row.get('세부 구분','')}</span>
+# 📝 실시간 면담 일지 피드
+        st.markdown('<h3 class="feed-title">📋 실시간 면담 일지 피드</h3>', unsafe_allow_html=True)
+        
+        if df.empty:
+            st.info("현재 등록된 면담 일지 데이터가 없습니다. 첫 기록을 등록해 보세요!")
+        else:
+            # 💡 [개선 1] 최신 일지 순으로 정렬한 뒤, 딱 "5개"만 추려냅니다.
+            latest_df = df.tail(5).iloc[::-1]
+            
+            # 카테고리 필터 등 기존 기능 유지용 (필요시)
+            category_filter = st.selectbox("정렬 카테고리 필터", ["전체 구분"] + list(df['구분'].dropna().unique()), key="feed_filter_box")
+            
+            for idx, row in latest_df.iterrows():
+                if category_filter != "전체 구분" and row.get('구분') != category_filter:
+                    continue
+                    
+                date_val = row.get('일자', '')
+                type_val = row.get('구분', '')
+                subtype_val = row.get('세부 구분', '')
+                content_val = row.get('내용', '')
+                author_val = row.get('면담자/작성자', row.get('면담자', ''))
+                
+                # 💡 [개선 2] 일지 내용 부분을 고정된 높이(300px)의 스크롤 박스로 감싸서 화면이 늘어지지 않게 만듭니다!
+                # 내부 줄바꿈(\n)도 화면에 그대로 보이도록 처리했습니다.
+                content_html = f"""
+                <div style="
+                    max-height: 250px; 
+                    overflow-y: auto; 
+                    background-color: #fcfcfc; 
+                    padding: 12px; 
+                    border-radius: 6px; 
+                    border: 1px solid #eaeaea;
+                    white-space: pre-wrap;
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: #333333;
+                ">{content_val}</div>
+                """
+                
+                # 깔끔한 카드 레이아웃 구성
+                st.markdown(f"""
+                <div style="background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px; border-left: 5px solid #2563eb;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div>
+                            <span style="font-weight: bold; color: #1e3a8a; margin-right: 8px;">📅 {date_val}</span>
+                            <span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-right: 4px;">{type_val}</span>
+                            <span style="background-color: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{subtype_val}</span>
+                        </div>
+                        <div style="font-size: 12px; color: #64748b;">작성자: <b>{author_val}</b></div>
                     </div>
-                    <div class='log-author'>작성자: {row.get('면담자/작성자','엘')}</div>
+                    {content_html}
                 </div>
-                <div class='log-body'>{str(row.get('내용',''))}</div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
 elif st.session_state["active_tab"] == "AI분석":
     st.subheader("🤖 Gemini AI 실시간 종합 보고서 브리핑")
