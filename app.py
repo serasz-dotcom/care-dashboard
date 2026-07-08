@@ -211,16 +211,18 @@ st.markdown("<hr style='margin-top:10px; margin-bottom:20px; border-top:1px soli
 
 if st.session_state["active_tab"] == "면담일지":
 # 📝 실시간 면담 일지 피드
+# 📝 실시간 면담 일지 피드
         st.markdown('<h3 class="feed-title">📋 실시간 면담 일지 피드</h3>', unsafe_allow_html=True)
         
-        if df.empty:
+        # 💡 df를 final_df로 전부 맞춰주어 에러를 완벽하게 해결했습니다!
+        if final_df.empty:
             st.info("현재 등록된 면담 일지 데이터가 없습니다. 첫 기록을 등록해 보세요!")
         else:
-            # 💡 [개선 1] 최신 일지 순으로 정렬한 뒤, 딱 "5개"만 추려냅니다.
-            latest_df = df.tail(5).iloc[::-1]
+            # 최신 일지 순으로 정렬한 뒤, 딱 "5개"만 추려냅니다.
+            latest_df = final_df.tail(5).iloc[::-1]
             
-            # 카테고리 필터 등 기존 기능 유지용 (필요시)
-            category_filter = st.selectbox("정렬 카테고리 필터", ["전체 구분"] + list(df['구분'].dropna().unique()), key="feed_filter_box")
+            # 카테고리 필터 기능 유지
+            category_filter = st.selectbox("정렬 카테고리 필터", ["전체 구분"] + list(final_df['구분'].dropna().unique()), key="feed_filter_box")
             
             for idx, row in latest_df.iterrows():
                 if category_filter != "전체 구분" and row.get('구분') != category_filter:
@@ -232,8 +234,7 @@ if st.session_state["active_tab"] == "면담일지":
                 content_val = row.get('내용', '')
                 author_val = row.get('면담자/작성자', row.get('면담자', ''))
                 
-                # 💡 [개선 2] 일지 내용 부분을 고정된 높이(300px)의 스크롤 박스로 감싸서 화면이 늘어지지 않게 만듭니다!
-                # 내부 줄바꿈(\n)도 화면에 그대로 보이도록 처리했습니다.
+                # 일지 내용 부분을 고정된 높이의 스크롤 박스로 감싸기
                 content_html = f"""
                 <div style="
                     max-height: 250px; 
@@ -263,7 +264,7 @@ if st.session_state["active_tab"] == "면담일지":
                     {content_html}
                 </div>
                 """, unsafe_allow_html=True)
-
+                
 elif st.session_state["active_tab"] == "AI분석":
     st.subheader("🤖 Gemini AI 실시간 종합 보고서 브리핑")
     if final_df.empty:
