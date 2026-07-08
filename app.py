@@ -256,6 +256,21 @@ if st.session_state["active_tab"] == "면담일지":
                     ">{content_val}</div>
                     """, height=160)
                 
+                # 깔끔한 카드 레이아웃 구성
+                st.markdown(f"""
+                <div style="background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px; border-left: 5px solid #2563eb;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div>
+                            <span style="font-weight: bold; color: #1e3a8a; margin-right: 8px;">📅 {date_val}</span>
+                            <span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-right: 4px;">{type_val}</span>
+                            <span style="background-color: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{subtype_val}</span>
+                        </div>
+                        <div style="font-size: 12px; color: #64748b;">작성자: <b>{author_val}</b></div>
+                    </div>
+                    {content_html}
+                </div>
+                """, unsafe_allow_html=True)
+                
 elif st.session_state["active_tab"] == "AI분석":
     st.subheader("🤖 Gemini AI 실시간 종합 보고서 브리핑")
     if final_df.empty:
