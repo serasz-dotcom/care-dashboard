@@ -211,62 +211,50 @@ st.markdown("<hr style='margin-top:10px; margin-bottom:20px; border-top:1px soli
 
 if st.session_state["active_tab"] == "면담일지":
 # 📝 실시간 면담 일지 피드
-        st.markdown('<h3 class="feed-title">📋 실시간 면담 일지 피드</h3>', unsafe_allow_html=True)
+        st.markdown('<h3>📋 실시간 면담 일지 피드</h3>', unsafe_allow_html=True)
         
         if final_df.empty:
             st.info("현재 등록된 면담 일지 데이터가 없습니다. 첫 기록을 등록해 보세요!")
         else:
-            # 💡 [정렬 필터 시스템] 카테고리 필터링 반영 후 최신순 정렬
+            # 카테고리 필터
             category_filter = st.selectbox("정렬 카테고리 필터", ["전체 구분"] + list(final_df['구분'].dropna().unique()), key="feed_filter_box")
             
             filtered_df = final_df.copy()
             if category_filter != "전체 구분":
                 filtered_df = filtered_df[filtered_df['구분'] == category_filter]
                 
-            # 최신순 정렬 및 딱 최신 5개만 슬라이싱
+            # 최신순 정렬 후 딱 '최신 5개'만 추출
             latest_df = filtered_df.tail(5).iloc[::-1]
             
             for idx, row in latest_df.iterrows():
                 date_val = row.get('일자', '')
                 type_val = row.get('구분', '')
                 subtype_val = row.get('세부 구분', '')
-                content_val = str(row.get('내용', '')).replace('\n', '<br>') # 줄바꿈 인지
-                author_val = row.get('면담자/작성자', row.get('면담자', ''))
+                content_val = str(row.get('내용', ''))
+                author_val = row.get('면담자/작성자', row.get('면담자', '명시되지 않음'))
                 
-                # 💡 [핵심 교체] 이상한 글씨가 안 나오도록 내부를 깔끔한 HTML 구조로 통째로 묶어 표기합니다!
-                st.markdown(f"""
-                <div style="
-                    background-color: #ffffff; 
-                    padding: 20px; 
-                    border-radius: 10px; 
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
-                    margin-bottom: 16px; 
-                    border-left: 5px solid #2563eb;
-                ">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <div>
-                            <span style="font-weight: bold; color: #1e3a8a; margin-right: 8px;">📅 {date_val}</span>
-                            <span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-right: 4px;">{type_val}</span>
-                            <span style="background-color: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{subtype_val}</span>
-                        </div>
-                        <div style="font-size: 12px; color: #64748b;">작성자: <b>{author_val}</b></div>
-                    </div>
+                # 💡 안전하고 깔끔한 Streamlit 정식 상자(container) 기능 사용
+                with st.container(border=True):
+                    # 상단 헤더 영역 (날짜 | 구분 | 작성자)
+                    st.markdown(f"**📅 {date_val}** |  ` {type_val} `  |  *{subtype_val}*")
+                    st.caption(f"작성자: {author_val}")
                     
+                    # 💡 [핵심] 5개 카드 안에 고정 크기 스크롤바 상자 만들기 (절대 안 깨지는 구조)
+                    st.components.v1.html(f"""
                     <div style="
-                        max-height: 180px; 
+                        max-height: 150px; 
                         overflow-y: auto; 
-                        background-color: #fcfcfc; 
-                        padding: 12px; 
+                        background-color: #fafafa; 
+                        padding: 10px; 
                         border-radius: 6px; 
-                        border: 1px solid #eaeaea;
-                        font-size: 14px;
-                        line-height: 1.6;
-                        color: #333333;
-                    ">
-                        {content_val}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                        border: 1px solid #e5e7eb;
+                        font-size: 14px; 
+                        line-height: 1.6; 
+                        color: #1f2937;
+                        white-space: pre-wrap;
+                        font-family: sans-serif;
+                    ">{content_val}</div>
+                    """, height=160)
                 
 elif st.session_state["active_tab"] == "AI분석":
     st.subheader("🤖 Gemini AI 실시간 종합 보고서 브리핑")
