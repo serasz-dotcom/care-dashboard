@@ -119,7 +119,7 @@ SPOT_CONFIG = {
     "사내카페 (kafe5)": {
         "base_url": "https://docs.google.com/spreadsheets/d/1rRpq9zX7g70hX2uwRwA1enPY83KSK_lNOiJ1MGIOzqY",
         "password": "kafe5",
-        "employees": {
+        "employees": ["루크", "휴버트", "오스틴"]
             "루크(장종원)": "루크",
             "휴버트(강채운)": "휴버트",
             "오스틴(김호중)": "오스틴",
@@ -181,15 +181,16 @@ st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
 # 사이드바
 st.sidebar.markdown("### 👤 소속 크루 프로필 조회")
-employee_list = list(spot_data["employees"].keys())
+employee_list = spot_data["employees"]
 selected_user = st.sidebar.selectbox("대상 크루를 선택하세요:", employee_list)
 st.sidebar.markdown("---")
 st.sidebar.caption(f"현재 선택된 스팟: **{current_spot}**")
 
 # 구글 시트 로드
 raw_url = spot_data["base_url"].strip().split("/edit")[0].split("/export")[0]
-gid = spot_data["employees"][selected_user]
-sheet_url = f"{raw_url}/export?format=csv&sheet={gid}"
+import urllib.parse
+sheet_name = selected_user  # 사이드바에서 선택한 이름 = 시트 탭 이름
+sheet_url = f"{raw_url}/export?format=csv&sheet={urllib.parse.quote(sheet_name)}"
 
 @st.cache_data(ttl=5)
 def load_data(url):
