@@ -120,8 +120,9 @@ SPOT_CONFIG = {
         "base_url": "https://docs.google.com/spreadsheets/d/1rRpq9zX7g70hX2uwRwA1enPY83KSK_lNOiJ1MGIOzqY",
         "password": "kafe5",
         "employees": {
-            "루크(장종원)": "1518673498",
-            "휴버트(강채운)": "1231497521",
+            "루크(장종원)": "루크",
+            "휴버트(강채운)": "휴버트",
+            "오스틴(김호중)": "오스틴",
         }
     },
     # 스팟 추가 예시:
