@@ -6,17 +6,16 @@ from google.oauth2.service_account import Credentials
 import datetime
 import time
 
-# 1. 페이지 기본 설정 및 타이틀 (💡 사이드바가 항상 열려있도록 initial_sidebar_state="expanded" 추가)
-st.set_page_config(page_title="AI 면담일지 시스템 2.0", layout="wide", initial_sidebar_state="expanded")
+# 1. 페이지 기본 설정 및 타이틀
+st.set_page_config(page_title="AI 면담일지 시스템 2.0", layout="wide")
 
-# 🌟 프리미엄 커스텀 CSS 테마
+# 🌟 프리미엄 커스텀 CSS 테마 (사이드바 제거 버전)
 st.markdown("""
 <style>
 [data-testid="stHeader"] { visibility: hidden; height: 0%; }
-div.block-container { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+div.block-container { padding-top: 2rem !important; padding-bottom: 2rem !important; }
 .stApp { background-color: #f8f9fa !important; }
-.sb-header { font-size: 18px !important; font-weight: 700; color: #1e293b; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-.sb-spot-tag { font-size: 12px; font-weight: bold; color: #2563eb; background-color: #eff6ff; padding: 4px 10px; border-radius: 20px; margin-bottom: 15px; display: inline-block; }
+.sb-spot-tag { font-size: 14px; font-weight: bold; color: #2563eb; background-color: #eff6ff; padding: 6px 14px; border-radius: 20px; display: inline-block; margin-bottom: 10px; }
 .crew-top-card { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
 .crew-avatar { width: 52px; height: 52px; background-color: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #2563eb; font-size: 18px; border: 2px solid #e2e8f0; }
 .crew-meta { margin-left: 14px; flex-grow: 1; }
@@ -93,7 +92,7 @@ def load_sheet_data(spreadsheet_id, sheet_name):
         gc = get_gspread_client()
         sh = gc.open_by_key(spreadsheet_id)
         worksheet = sh.worksheet(sheet_name)
-        raw_data = worksheet.get("A9:F1000") # 9번째 줄부터 데이터를 똑똑하게 낚아챕니다.
+        raw_data = worksheet.get("A9:F1000")
         if not raw_data:
             return worksheet, pd.DataFrame()
         headers = [str(h).strip() for h in raw_data[0]]
@@ -112,32 +111,30 @@ def load_sheet_data(spreadsheet_id, sheet_name):
         st.error(f"시트 데이터를 읽어오는 중 오류가 발생했습니다: {e}")
         return None, pd.DataFrame()
 
-# 💡 왼쪽 크루 창 구성
-st.sidebar.markdown('<div class="sb-header">📋 면담일지 시스템</div>', unsafe_allow_html=True)
-st.sidebar.markdown(f'<div class="sb-spot-tag">{current_spot}</div>', unsafe_allow_html=True)
+# 💡 [구조 혁신] 숨어버리는 사이드바를 없애고 메인 상단 화면에 크루 선택창을 시원하게 배치합니다!
+st.markdown(f'<div class="sb-spot-tag">🏢 현재 선택된 스팟: {current_spot}</div>', unsafe_allow_html=True)
 
-search_query = st.sidebar.text_input("🔍 직원 검색...", value="", placeholder="이름 입력...")
-filtered_employees = [emp for emp in spot_info["employees"] if search_query.lower() in emp.lower()]
+col_sel1, col_sel2 = st.columns([2, 5])
+with col_sel1:
+    selected_user = st.selectbox("👤 대시보드를 조회할 크루 선택:", spot_info["employees"])
+with col_sel2:
+    st.write("") # 간격 맞춤용
+    st.write("") 
+    if st.button("🚪 시스템 로그아웃", key="logout_btn"):
+        st.session_state["logged_in_spot"] = None
+        st.rerun()
 
-if not filtered_employees:
-    st.sidebar.info("검색된 직원이 없습니다.")
-    st.stop()
-
-selected_user = st.sidebar.radio("소속 크루 명단", filtered_employees, label_visibility="collapsed")
-st.sidebar.markdown("---")
-if st.sidebar.button("🚪 시스템 로그아웃", use_container_width=True):
-    st.session_state["logged_in_spot"] = None
-    st.rerun()
+st.markdown("<hr style='margin-top:10px; margin-bottom:20px; border-top:2px solid #2563eb;'>", unsafe_allow_html=True)
 
 worksheet_obj, final_df = load_sheet_data(spot_info["spreadsheet_id"], selected_user)
-
 total_meetings = len(final_df) if not final_df.empty else 0
+
 st.markdown(f"""
 <div class='crew-top-card'>
     <div style='display: flex; align-items: center;'>
         <div class='crew-avatar'>{selected_user[0]}</div>
         <div class='crew-meta'>
-            <p class='crew-name'>{selected_user}</p>
+            <p class='crew-name'>{selected_user} 크루</p>
             <p class='crew-sub'>{current_spot} · 면담 총 {total_meetings}회 기록됨</p>
         </div>
     </div>
@@ -178,17 +175,17 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-col1, col2, col3, _ = st.columns([1.2, 1.2, 1.2, 5.4])
+col1, col2, col3, _ = st.columns([1.5, 1.5, 1.5, 4.5])
 with col1:
-    if st.button("📝 면담일지 피드", use_container_width=True): st.session_state["active_tab"] = "면담일지"
+    if st.button("📝 실시간 면담 피드", use_container_width=True): st.session_state["active_tab"] = "면담일지"
 with col2:
-    if st.button("🤖 AI 브리핑", use_container_width=True): st.session_state["active_tab"] = "AI분석"
+    if st.button("🤖 AI 카테고리 브리핑", use_container_width=True): st.session_state["active_tab"] = "AI분석"
 with col3:
-    if st.button("➕ 새 면담 입력", use_container_width=True): st.session_state["active_tab"] = "면담입력"
+    if st.button("➕ 새 면담 즉시 입력", use_container_width=True): st.session_state["active_tab"] = "면담입력"
 
-st.markdown("<hr style='margin-top:10px; margin-bottom:20px; border-top:1px solid #e2e8f0;'>", unsafe_allow_html=True)
+st.markdown("<hr style='margin-top:10px; margin-bottom:25px; border-top:1px solid #e2e8f0;'>", unsafe_allow_html=True)
 
-# 1️⃣ [면담일지 피드] 탭 영역 (image_dbfea0 프리미엄 카드 디자인 완벽 고정)
+# 1️⃣ [면담일지 피드] 탭 영역 (image_dbfea0 프리미엄 카드 레이아웃 완벽 고정)
 if st.session_state["active_tab"] == "면담일지":
     st.markdown('<h3>📋 실시간 면담 일지 피드</h3>', unsafe_allow_html=True)
     if final_df.empty:
@@ -223,7 +220,7 @@ if st.session_state["active_tab"] == "면담일지":
             </div>
             """, unsafe_allow_html=True)
 
-# 2️⃣ [AI분석] 탭 영역 (초기 버전의 스마트 카테고리별 요약 로직 완벽 연동)
+# 2️⃣ [AI분석] 탭 영역 (초기 버전 스마트 카테고리 자동화 완벽 작동형)
 elif st.session_state["active_tab"] == "AI분석":
     st.markdown("<h3>🤖 Gemini AI 카테고리별 실시간 종합 브리핑</h3>", unsafe_allow_html=True)
     if final_df.empty:
