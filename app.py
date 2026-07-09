@@ -189,7 +189,7 @@ st.sidebar.caption(f"현재 선택된 스팟: **{current_spot}**")
 # 구글 시트 로드
 raw_url = spot_data["base_url"].strip().split("/edit")[0].split("/export")[0]
 gid = spot_data["employees"][selected_user]
-sheet_url = f"{raw_url}/export?format=csv&gid={gid}"
+sheet_url = f"{raw_url}/export?format=csv&sheet={gid}"
 
 @st.cache_data(ttl=5)
 def load_data(url):
