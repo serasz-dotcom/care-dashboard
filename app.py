@@ -240,23 +240,55 @@ if st.session_state["active_tab"] == "면담일지":
                 """, unsafe_allow_html=True)
 
 elif st.session_state["active_tab"] == "AI분석":
-    st.subheader("🤖 Gemini AI 실시간 종합 보고서 브리핑")
+    st.markdown("<h3>🤖 Gemini AI 카테고리별 실시간 종합 브리핑</h3>", unsafe_allow_html=True)
     if final_df.empty:
         st.info("분석할 면담 히스토리 데이터가 없습니다.")
     else:
-        with st.spinner("구글 고성능 제미나이 AI가 일지를 종단 검색 중..."):
-            context = ""
-            for _, row in final_df.tail(30).iterrows():
-                context += f"[{row.get('일자','')}] 구분: {row.get('구분','')}, 내용: {row.get('내용','')}\n"
-            prompt = f"""당신은 장애인 표준사업장 최고 전문 지도원입니다. 다음 면담 히스토리를 요약 분석하여 리포트를 작성하세요.
-            [PART1] 강점 요약 [PART2] 불안도 리스크 진단 [PART3] 위생 상태 평가 [PART4] 업무발전도 가이드라인
-            데이터:\n{context}"""
+        with st.spinner("구글 고성능 제미나이 AI가 카테고리별로 데이터를 종단 스크리닝 중..."):
+            # 💡 [초기 버전 로직 완벽 부활] 카테고리(구분)별로 데이터를 묶어서 AI에게 전달합니다.
+            categories = ["월 면담", "근무 리뷰", "위생", "근태 관리"]
+            combined_context = ""
+            
+            for cat in categories:
+                cat_df = final_df[final_df['구분'] == cat]
+                if not cat_df.empty:
+                    combined_context += f"■ [{cat}] 카테고리 데이터 (최근 기록순):\n"
+                    for _, row in cat_df.tail(10).iterrows():
+                        combined_context += f"- 일자: {row.get('일자','')}, 내용: {row.get('내용','')}\n"
+                    combined_context += "\n"
+            
+            # 카테고리가 지정되지 않은 기타 데이터 보완
+            etc_df = final_df[~final_df['구분'].isin(categories)]
+            if not etc_df.empty:
+                combined_context += "■ [기타 사항] 카테고리 데이터:\n"
+                for _, row in etc_df.tail(5).iterrows():
+                    combined_context += f"- 일자: {row.get('일자','')}, 내용: {row.get('내용','')}\n"
+            
+            # AI에게 카테고리별로 나누어 리포트를 작성하라고 명령
+            prompt = f"""당신은 장애인 표준사업장 최고 전문 지도원입니다. 
+            제공된 크루의 면담 데이터를 바탕으로, 반드시 아래 명시된 카테고리별로 구역을 나누어 가이드라인 리포트를 작성하세요.
+            이때 이모지(emoji)를 적절히 활용하여 매니저가 한눈에 읽기 쉽게 가독성을 극대화하세요.
+
+            [분석 요청 카테고리]
+            1. 📅 월 정기 면담 종합 요약
+            2. ☕ 현장 근무 리뷰 및 직무 수행 평가
+            3. ✨ 개인 위생 및 복장 규정 준수 상태
+            4. ⏰ 근태 관리 및 돌발 이슈 리스크 진단
+
+            데이터 내용:\n{combined_context}"""
+            
             try:
                 client = genai.Client(api_key=GEMINI_API_KEY)
                 response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
-                st.markdown(response.text)
+                
+                # 예쁜 테두리 상자 안에 AI 분석 결과 노출
+                st.markdown(f"""
+                <div style="background-color: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-top: 6px solid #10b981; line-height: 1.8;">
+                    {response.text}
+                </div>
+                """, unsafe_allow_html=True)
             except Exception as e:
-                st.error(f"AI 통신 에러: {e}")
+                st.error(f"AI 통신 에러가 발생했습니다: {e}")
 
 elif st.session_state["active_tab"] == "면담입력":
     st.subheader(f"➕ {selected_user} 크루 현장 면담 즉시 기록")
