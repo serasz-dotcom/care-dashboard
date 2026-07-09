@@ -1,292 +1,529 @@
 import streamlit as st
 import pandas as pd
 from google import genai
-import gspread
-from google.oauth2.service_account import Credentials
-import datetime
 import time
 
-# 1. 페이지 기본 설정 및 타이틀
-st.set_page_config(page_title="AI 면담일지 시스템 2.0", layout="wide")
+st.set_page_config(page_title="AI 면담일지 대시보드", layout="wide")
 
-# 🌟 프리미엄 커스텀 CSS 테마 (사이드바 제거 버전)
 st.markdown("""
 <style>
-[data-testid="stHeader"] { visibility: hidden; height: 0%; }
-div.block-container { padding-top: 2rem !important; padding-bottom: 2rem !important; }
-.stApp { background-color: #f8f9fa !important; }
-.sb-spot-tag { font-size: 14px; font-weight: bold; color: #2563eb; background-color: #eff6ff; padding: 6px 14px; border-radius: 20px; display: inline-block; margin-bottom: 10px; }
-.crew-top-card { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
-.crew-avatar { width: 52px; height: 52px; background-color: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #2563eb; font-size: 18px; border: 2px solid #e2e8f0; }
-.crew-meta { margin-left: 14px; flex-grow: 1; }
-.crew-name { font-size: 22px !important; font-weight: 800; color: #1e293b; margin: 0; }
-.crew-sub { font-size: 13px !important; color: #64748b; margin-top: 2px; }
-.status-badge { font-size: 12px; font-weight: bold; color: #16a34a; background-color: #f0fdf4; padding: 6px 12px; border-radius: 30px; }
-.indicator-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-.ind-card { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
-.ind-label { font-size: 13px !important; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 5px; }
-.ind-value { font-size: 26px !important; font-weight: 800; margin-top: 6px; margin-bottom: 8px; }
-.ind-value.normal { color: #f59e0b; }
-.ind-value.good { color: #16a34a; }
-.ind-value.growth { color: #2563eb; }
-.ind-sub { font-size: 12px !important; color: #94a3b8; }
-.ind-bar { height: 5px; border-radius: 10px; margin-top: 4px; }
+div.block-container { padding-top: 5rem !important; padding-bottom: 2rem !important; }
+
+/* 상단 배너 */
+.blue-banner {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 16px;
+}
+.banner-title { font-size: 22px; font-weight: 800; color: #ffffff; margin-bottom: 4px; }
+.banner-sub { font-size: 13px; color: #93c5fd; }
+.profile-card {
+    background: rgba(255,255,255,0.95);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.profile-name { font-size: 16px; font-weight: 700; color: #1e293b; }
+.profile-desc { font-size: 12px; color: #64748b; margin-top: 2px; }
+.status-badge {
+    font-size: 12px; font-weight: 700; color: #1d4ed8;
+    background: #eff6ff; padding: 5px 14px; border-radius: 99px;
+}
+
+/* 지표 카드 */
+.metric-row { display: flex; gap: 12px; margin-bottom: 16px; }
+.metric-card {
+    flex: 1;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+.metric-label { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+.metric-value { font-size: 20px; font-weight: 700; }
+.meter-bar-bg { height: 6px; background: #f1f5f9; border-radius: 99px; margin-top: 6px; overflow: hidden; }
+.meter-bar-fill { height: 100%; border-radius: 99px; }
+
+/* 메뉴 버튼 */
+.main-btn>button {
+    width: 100%; height: 62px; font-size: 13.5px !important;
+    border-radius: 12px; font-weight: 600;
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #334155 !important;
+    transition: all 0.15s ease-in-out;
+}
+.main-btn>button:hover {
+    background-color: rgba(37, 99, 235, 0.04) !important;
+    border-color: #2563eb !important;
+    color: #2563eb !important;
+}
+.active-btn>button {
+    width: 100% !important; height: 62px !important;
+    font-size: 13.5px !important; border-radius: 12px !important;
+    font-weight: 700 !important;
+    background-color: #2563eb !important;
+    border: 1px solid #2563eb !important;
+    color: #ffffff !important;
+    box-shadow: 0 6px 15px rgba(37, 99, 235, 0.25) !important;
+}
+.opd-btn>button {
+    width: 100%; height: 50px; font-size: 14px !important;
+    border-radius: 12px; font-weight: 700;
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #334155 !important;
+}
+.sub-btn>button {
+    width: 100%; height: 44px; font-size: 13px !important;
+    border-radius: 10px; font-weight: 600;
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #334155 !important;
+}
+.active-sub-btn>button {
+    width: 100% !important; height: 44px !important;
+    font-size: 13px !important; border-radius: 10px !important;
+    font-weight: 700 !important;
+    background-color: #2563eb !important;
+    border: 1px solid #2563eb !important;
+    color: #ffffff !important;
+}
+
+/* OPD 카드 */
+.opd-card {
+    padding: 20px; border-radius: 14px; margin-bottom: 14px;
+    border-left: 6px solid #64748b;
+    background-color: #f8fafc;
+}
+.opd-strong { border-left-color: #2563eb; background-color: rgba(37,99,235,0.04); }
+.opd-warning { border-left-color: #f59e0b; background-color: rgba(245,158,11,0.04); }
+.opd-success { border-left-color: #10b981; background-color: rgba(16,185,129,0.04); }
+.opd-danger  { border-left-color: #ef4444; background-color: rgba(239,68,68,0.04); }
+.opd-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: #1e293b; }
+.opd-content { font-size: 14px; line-height: 1.7; color: #334155; }
+
+/* 로그인 */
+.login-hint { font-size: 12px; color: #94a3b8; text-align: center; margin-top: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================================
-# 🛠️ [환경설정] 매니저님의 복사 키 이식 구역
+# ✏️ 설정 구역 — 여기만 수정하세요
 # =========================================================================
-GEMINI_API_KEY = "c1d5423b657ff8d3f312e557962be880da2ffd71"
-
-# 구글 서비스 계정 JSON 키 데이터 바인딩
-CREDENTIALS_DICT = {
-    "type": "service_account",
-    "project_id": "maximal-ceiling-500606-m5",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDUhuXLpPQxKWOp\nWdpsWyJdBQU4pM2yFIEcPAOq2q+aE10c7auwWXZFBFeRmAp5Hd13cm5IFbz4T+KC\nruhyrE+zsEdCqCU/NzoGmZJMoP3QGreR8CxN337ZJ2/k9Mj8HIlesay5OnesSfFw\nDdJ2+5fCtkl8HfPVN7lOfZJVwd7DESGBUfml3VTYhLlXsj6fU276V9sBpbeXxyb9\n42Yvz2moi9SlJF9lMbdkvUefHemYe29T7Jjony8VIAElC0bwAYe7xvmAS9ply12s\n+Z5n/OQIKC4Qje7pWHJcFN+mCLT3z1dqS7dD15AqDhuKlPovAyCSSSpxQzPwBt8H\n9U83HkIBAgMBAAECggEAA6vkQA00oL11I3b8vyl14a3VW2ymwbWj+K+6un1g/OQ/\nvrZbucYEioha1kDjpsL9e/ObSciCWrclPm+0w/e2asVtUw6iPMIrUPOJ46QBA9LV\nAALqU7ARj2vPKDaTBZ6dQD2z3QFQZvFiEoxSlKFKYQqSy2pIYj2+XZztZb4zJyMr\nu0NtQCXmkI1J/SfxfZj/+FLn4cpuM6Rsmq3uaotPvqZDfsfYJ+eP5LwLnumROxmp\nrtHviMdG5E1DOzSBq00rXQLv/4gQLqWQEvE/sd1wcglu59a4qsrHlEO/jfetL3vX\nrTnoNZx4w2OX5HZuNd+ulq/TxZvjSCNna0TpY8KRoQKBgQDrqyLbyrg9Bec2e7io\nevayTRXC4m1862NzZ7/Kof9lXy8wJVooEkPkdWNZDDFT7mJXMiCK4uAxG91Z5oAL\nsTJpQGjhqdOzSQMdu6k2jh8eCEsKZuaONDa7qaS/GxGBJm91GBXnsCx8kE/1POKs\n4SbABHZQEJqAGvUP5Uf4qeP9mQKBgQDm3Kr8o0xGo6dzdUvb9vP0feChN2GI2ucr\nXcpr2WWGzS9jB2HXNNgWU1h+sbVq91ci86SOJMQ6x+UIvrKHTRdADonE0qYxuuT0\nRK11bg3w7db4ykLUoE2vOaf7Em6E2Ani6JhzBChCeb4CtyTT7LF/yZzIfcEI2H6i\nBiZGFPGYqQKBgQDFOV1cz1RMTWpoIDYzWWSnZvd1NwUl6+A4rnTFYblY3sWg50GC\nE3cZ9FuGJDwL344RJvQxBxlUP9uI5uv13P8xMiQT5ooymkGvWmOMMng8K/iQ5fjA\nvVWoy5oCDOcjTEUum0+Jq9gvDp67v45725kQTSuuaZbC6sx31wvaQGN60QKBgFlG\nFfzyLOnYGUXlovshqT7venD9WIMym1hCwaco/0C8kcmKrkQpVDJ18m+zysLdeN20\nN/sbrqJIcIIMND9sCUSlGpN5Hfl3G1h2Qll5wHxdjNbSaDuO7duHwTSu8PwACvqr\nFWDMx8DFETw9lEk7a3xN+4nwTzhbd8Sx+hT5vl9ZAoGBAIMnDRuZhNJX4widaIrt\nU4tWxLg8GpsHjXObKmo+EaNZJ9UzqGDXMHFiN10Bw+BcRDkdjRFFl2Q8t4aA1Dlu\nTzkDb+ge8pgNLeiGLq+D+K9kAmNsUV9MrlRoQYPn4WvWVMfBu4vt5lOb+9v8ocbi\nNRyBZ3CO/JXGwApzDM2RD1CA\n-----END PRIVATE KEY-----\n",
-    "client_email": "care-manager@maximal-ceiling-500606-m5.iam.gserviceaccount.com",
-    "token_uri": "https://oauth2.googleapis.com/token"
-
-}
-
 SPOT_CONFIG = {
     "사내카페 (kafe5)": {
-        "spreadsheet_id": "1rRpq9zX7g70hX2uwRwA1enPY83KSK_lNOiJ1MGIOzqY",
+        "base_url": "https://docs.google.com/spreadsheets/d/1rRpq9zX7g70hX2uwRwA1enPY83KSK_lNOiJ1MGIOzqY",
         "password": "kafe5",
-        "employees": ["루크", "앤버", "아이사"]
-    }
+        "employees": {
+            "루크(장종원)": "1518673498",
+            "휴버트(강채운)": "1231497521",
+        }
+    },
+    # 스팟 추가 예시:
+    # "조경팀": {
+    #     "base_url": "https://docs.google.com/spreadsheets/d/시트ID",
+    #     "password": "garden2024",
+    #     "employees": { "직원명": "gid번호" }
+    # },
 }
+GEMINI_API_KEY = "c1d5423b657ff8d3f312e557962be880da2ffd71"
 # =========================================================================
 
-if "logged_in_spot" not in st.session_state: st.session_state["logged_in_spot"] = None
-if "active_tab" not in st.session_state: st.session_state["active_tab"] = "면담일지"
+# 세션 초기화
+for key, val in [("logged_in_spot", None), ("current_action", None), ("ai_report_data", {}), ("selected_sub_view", "요약")]:
+    if key not in st.session_state:
+        st.session_state[key] = val
 
+# ── 로그인 화면 ──────────────────────────────────────────────
 if st.session_state["logged_in_spot"] is None:
-    st.markdown("<h2 style='text-align: center; margin-top: 50px;'>🔒 사내 면담일지 시스템 권한 인증</h2>", unsafe_allow_html=True)
-    _, cent_co, _ = st.columns([1, 1.5, 1])
-    with cent_co:
+    st.markdown("<h2 style='text-align:center; margin-bottom:30px;'>🔒 사내 면담 관리 시스템 권한 인증</h2>", unsafe_allow_html=True)
+    _, cent, _ = st.columns([1, 1.8, 1])
+    with cent:
         with st.container(border=True):
             selected_spot = st.selectbox("접근할 근무 스팟 선택:", list(SPOT_CONFIG.keys()))
-            input_password = st.text_input(f"🔑 [{selected_spot}] 비밀번호:", type="password")
-            if st.button("🚀 시스템 로그인", use_container_width=True):
-                if input_password == SPOT_CONFIG[selected_spot]["password"]:
+            input_pw = st.text_input(f"🔑 [{selected_spot}] 전용 비밀번호:", type="password")
+            st.write("")
+            if st.button("🚀 대시보드 진입", use_container_width=True):
+                if input_pw == SPOT_CONFIG[selected_spot]["password"]:
                     st.session_state["logged_in_spot"] = selected_spot
+                    st.session_state["current_action"] = None
+                    st.session_state["ai_report_data"] = {}
                     st.success("🔓 인증 성공!")
                     time.sleep(0.5)
                     st.rerun()
                 else:
                     st.error("❌ 비밀번호가 올바르지 않습니다.")
+        st.markdown('<p class="login-hint">비밀번호 문의: 담당 매니저 세라에게 연락하세요</p>', unsafe_allow_html=True)
     st.stop()
 
+# ── 메인 대시보드 ──────────────────────────────────────────────
 current_spot = st.session_state["logged_in_spot"]
-spot_info = SPOT_CONFIG[current_spot]
+spot_data = SPOT_CONFIG[current_spot]
 
-@st.cache_resource
-def get_gspread_client():
-    scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    creds = Credentials.from_service_account_info(CREDENTIALS_DICT, scopes=scope)
-    return gspread.authorize(creds)
-
-def load_sheet_data(spreadsheet_id, sheet_name):
-    try:
-        gc = get_gspread_client()
-        sh = gc.open_by_key(spreadsheet_id)
-        worksheet = sh.worksheet(sheet_name)
-        raw_data = worksheet.get("A9:F1000")
-        if not raw_data:
-            return worksheet, pd.DataFrame()
-        headers = [str(h).strip() for h in raw_data[0]]
-        rows = raw_data[1:]
-        if not rows:
-            df = pd.DataFrame(columns=headers)
-            return worksheet, df
-        padded_rows = []
-        for r in rows:
-            if len(r) < len(headers):
-                r = r + [""] * (len(headers) - len(r))
-            padded_rows.append(r[:len(headers)])
-        df = pd.DataFrame(padded_rows, columns=headers)
-        return worksheet, df
-    except Exception as e:
-        st.error(f"시트 데이터를 읽어오는 중 오류가 발생했습니다: {e}")
-        return None, pd.DataFrame()
-
-# 💡 [구조 혁신] 숨어버리는 사이드바를 없애고 메인 상단 화면에 크루 선택창을 시원하게 배치합니다!
-st.markdown(f'<div class="sb-spot-tag">🏢 현재 선택된 스팟: {current_spot}</div>', unsafe_allow_html=True)
-
-col_sel1, col_sel2 = st.columns([2, 5])
-with col_sel1:
-    selected_user = st.selectbox("👤 대시보드를 조회할 크루 선택:", spot_info["employees"])
-with col_sel2:
-    st.write("") # 간격 맞춤용
-    st.write("") 
-    if st.button("🚪 시스템 로그아웃", key="logout_btn"):
+# 상단 타이틀 + 로그아웃
+col_title, col_logout = st.columns([8, 2])
+with col_title:
+    st.markdown('<p style="font-size:24px; font-weight:800; color:#2563eb; margin:0;">🤝 AI 면담일지 대시보드</p>', unsafe_allow_html=True)
+with col_logout:
+    if st.button("🚪 시스템 로그아웃", use_container_width=True):
         st.session_state["logged_in_spot"] = None
+        st.session_state["current_action"] = None
+        st.session_state["ai_report_data"] = {}
         st.rerun()
 
-st.markdown("<hr style='margin-top:10px; margin-bottom:20px; border-top:2px solid #2563eb;'>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-worksheet_obj, final_df = load_sheet_data(spot_info["spreadsheet_id"], selected_user)
-total_meetings = len(final_df) if not final_df.empty else 0
+# 사이드바
+st.sidebar.markdown("### 👤 소속 크루 프로필 조회")
+employee_list = list(spot_data["employees"].keys())
+selected_user = st.sidebar.selectbox("대상 크루를 선택하세요:", employee_list)
+st.sidebar.markdown("---")
+st.sidebar.caption(f"현재 선택된 스팟: **{current_spot}**")
 
+# 구글 시트 로드
+raw_url = spot_data["base_url"].strip().split("/edit")[0].split("/export")[0]
+gid = spot_data["employees"][selected_user]
+sheet_url = f"{raw_url}/export?format=csv&gid={gid}"
+
+@st.cache_data(ttl=5)
+def load_data(url):
+    try:
+        df = pd.read_csv(url, skiprows=8)
+        df.columns = df.columns.str.strip()
+        for col in ['내용', '구분', '세부 구분']:
+            if col in df.columns:
+                df[col] = df[col].astype(str).str.strip().replace('nan', '')
+        return df
+    except Exception as e:
+        return None
+
+final_df = load_data(sheet_url)
+
+# ── 상단 파란 배너 ──
+total_count = len(final_df) if final_df is not None else 0
 st.markdown(f"""
-<div class='crew-top-card'>
-    <div style='display: flex; align-items: center;'>
-        <div class='crew-avatar'>{selected_user[0]}</div>
-        <div class='crew-meta'>
-            <p class='crew-name'>{selected_user} 크루</p>
-            <p class='crew-sub'>{current_spot} · 면담 총 {total_meetings}회 기록됨</p>
+<div class="blue-banner">
+    <div class="banner-title">안녕하세요, 관리자님 👋</div>
+    <div class="banner-sub">{current_spot} 현장 크루들의 케어 상태를 실시간 체크 중입니다.</div>
+    <div class="profile-card">
+        <div>
+            <div class="profile-name">👤 {selected_user} 크루</div>
+            <div class="profile-desc">면담 기록 {total_count}건 · Gemini AI 분석 대기 중</div>
+        </div>
+        <div class="status-badge">정상 근무 중</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ── 지표 카드 (키워드 기반) ──
+if final_df is not None and '내용' in final_df.columns:
+    recent = final_df.tail(20)
+    def calc(kw):
+        cnt = recent['내용'].str.contains(kw, na=False, case=False).sum()
+        return min(95, max(10, int(cnt / max(len(recent), 1) * 100)))
+
+    anxiety = calc("불안|긴장|힘들|어려움|고충")
+    hygiene = calc("위생|청결|손씻기|마스크|앞치마")
+    growth  = calc("발전|향상|성장|잘함|성공|개선")
+
+    def color(s, inv=False):
+        good = s < 40 if inv else s > 60
+        bad  = s > 60 if inv else s < 40
+        return "#16a34a" if good else "#dc2626" if bad else "#d97706"
+    def label(s, inv=False):
+        good = s < 40 if inv else s > 60
+        bad  = s > 60 if inv else s < 40
+        return "양호" if good else "주의" if bad else "보통"
+
+    st.markdown(f"""
+    <div class="metric-row">
+        <div class="metric-card">
+            <div class="metric-label">😰 불안도</div>
+            <div class="metric-value" style="color:{color(anxiety,True)}">{label(anxiety,True)}</div>
+            <div class="meter-bar-bg"><div class="meter-bar-fill" style="width:{anxiety}%;background:{color(anxiety,True)};"></div></div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">최근 기록 기반</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">🧼 위생 상태</div>
+            <div class="metric-value" style="color:{color(hygiene)}">{label(hygiene)}</div>
+            <div class="meter-bar-bg"><div class="meter-bar-fill" style="width:{hygiene}%;background:{color(hygiene)};"></div></div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">최근 기록 기반</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">📈 업무 발전도</div>
+            <div class="metric-value" style="color:{color(growth)}">{label(growth)}</div>
+            <div class="meter-bar-bg"><div class="meter-bar-fill" style="width:{growth}%;background:{color(growth)};"></div></div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">최근 기록 기반</div>
         </div>
     </div>
-    <div class='status-badge'>정상 근무 중</div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-anxiety_status = "보통"
-hygiene_status = "양호"
-growth_status = "성장 중"
+# ── OPD 버튼 ──
+with st.container(border=True):
+    st.markdown(f"<h4 style='margin:0 0 6px;'>📄 {selected_user}의 OPD 가이드라인</h4>", unsafe_allow_html=True)
+    st.markdown("크루의 누적 기록 전체를 정밀 대조하여 한 페이지 스크리닝 요약본을 연출합니다.")
+    st.write("")
+    _, opd_col, _ = st.columns([1, 2, 1])
+    with opd_col:
+        st.markdown(f'<div class="{"active-btn" if st.session_state["current_action"] == "opd_report" else "opd-btn"}">', unsafe_allow_html=True)
+        if st.button("📊 한 페이지 요약 보고서 (OPD) 분석", use_container_width=True):
+            st.session_state["current_action"] = "opd_report"
+            st.session_state["ai_report_data"] = {}
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-if not final_df.empty and '내용' in final_df.columns:
-    full_text = " ".join(final_df['내용'].astype(str).tolist())
-    if "불안" in full_text or "긴장" in full_text or "이슈" in full_text: anxiety_status = "주의 필요"
-    if "위생" in full_text or "복장" in full_text or "미준수" in full_text: hygiene_status = "점검 필요"
-    if "성장" in full_text or "칭찬" in full_text or "잘함" in full_text: growth_status = "우수 크루"
+st.write("")
 
-st.markdown(f"""
-<div class='indicator-container'>
-    <div class='ind-card'>
-        <div class='ind-label'>😟 불안도</div>
-        <div class='ind-value normal'>{anxiety_status}</div>
-        <div class='ind-sub'>최근 3개월 평균</div>
-        <div class='ind-bar' style='background-color:#f59e0b; width:60%;'></div>
-    </div>
-    <div class='ind-card'>
-        <div class='ind-label'>✨ 위생 상태</div>
-        <div class='ind-value good'>{hygiene_status}</div>
-        <div class='ind-sub'>최근 3개월 평균</div>
-        <div class='ind-bar' style='background-color:#16a34a; width:85%;'></div>
-    </div>
-    <div class='ind-card'>
-        <div class='ind-label'>📈 업무 발전도</div>
-        <div class='ind-value growth'>{growth_status}</div>
-        <div class='ind-sub'>최근 3개월 평균</div>
-        <div class='ind-bar' style='background-color:#2563eb; width:75%;'></div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# ── 근무 메뉴 ──
+with st.container(border=True):
+    st.markdown("<p style='color:#2563eb; font-weight:700; margin-bottom:10px;'>📱 마이메뉴 - 근무 및 평가 관리</p>", unsafe_allow_html=True)
+    c1, c2, c3, c4, c5 = st.columns(5)
+    menus_work = [
+        (c1, "move_spot",  "📍 근무지 이동"),
+        (c2, "attendance", "⏰ 근태 관리"),
+        (c3, "monthly",    "📅 월면담"),
+        (c4, "review",     "📊 근무 리뷰"),
+        (c5, "growth",     "📈 업무 발전"),
+    ]
+    for col, key, label_text in menus_work:
+        with col:
+            is_active = st.session_state["current_action"] == key
+            st.markdown(f'<div class="{"active-btn" if is_active else "main-btn"}">', unsafe_allow_html=True)
+            if st.button(label_text, key=f"btn_{key}"):
+                st.session_state["current_action"] = key
+                st.session_state["ai_report_data"] = {}
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
-col1, col2, col3, _ = st.columns([1.5, 1.5, 1.5, 4.5])
-with col1:
-    if st.button("📝 실시간 면담 피드", use_container_width=True): st.session_state["active_tab"] = "면담일지"
-with col2:
-    if st.button("🤖 AI 카테고리 브리핑", use_container_width=True): st.session_state["active_tab"] = "AI분석"
-with col3:
-    if st.button("➕ 새 면담 즉시 입력", use_container_width=True): st.session_state["active_tab"] = "면담입력"
+st.write("")
 
-st.markdown("<hr style='margin-top:10px; margin-bottom:25px; border-top:1px solid #e2e8f0;'>", unsafe_allow_html=True)
+with st.container(border=True):
+    st.markdown("<p style='color:#0f766e; font-weight:700; margin-bottom:10px;'>🧼 마이메뉴 - 위생 및 행동 수칙</p>", unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    menus_hygiene = [
+        (c1, "hygiene",   "🧼 개인 위생"),
+        (c2, "manual",    "☕ 매뉴얼 준수"),
+        (c3, "etiquette", "🤝 직장 예절"),
+        (c4, "others",    "🔍 기타 사항"),
+    ]
+    for col, key, label_text in menus_hygiene:
+        with col:
+            is_active = st.session_state["current_action"] == key
+            st.markdown(f'<div class="{"active-btn" if is_active else "main-btn"}">', unsafe_allow_html=True)
+            if st.button(label_text, key=f"btn_{key}"):
+                st.session_state["current_action"] = key
+                st.session_state["ai_report_data"] = {}
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
-# 1️⃣ [면담일지 피드] 탭 영역 (image_dbfea0 프리미엄 카드 레이아웃 완벽 고정)
-if st.session_state["active_tab"] == "면담일지":
-    st.markdown('<h3>📋 실시간 면담 일지 피드</h3>', unsafe_allow_html=True)
-    if final_df.empty:
-        st.info("현재 등록된 면담 일지 데이터가 없습니다. 첫 기록을 등록해 보세요!")
+# ── 면담일지 검색 (아코디언) ──
+st.write("")
+with st.container(border=True):
+    st.markdown("### 🔍 면담일지 검색")
+    search_q = st.text_input("키워드 검색", placeholder="예: 위생, 불안, 피크타임...", label_visibility="collapsed")
+
+    if final_df is not None and '내용' in final_df.columns:
+        filtered = final_df.copy()
+        if search_q:
+            filtered = filtered[
+                filtered['내용'].str.contains(search_q, na=False, case=False) |
+                filtered['구분'].str.contains(search_q, na=False, case=False)
+            ]
+        st.caption(f"총 {len(filtered)}건 · 클릭하면 내용 펼쳐짐")
+
+        if "expanded_row" not in st.session_state:
+            st.session_state["expanded_row"] = None
+
+        for i, (_, row) in enumerate(filtered.iloc[::-1].iterrows()):
+            col_meta, col_toggle = st.columns([10, 1])
+            with col_meta:
+                preview = str(row.get('내용', ''))[:50] + "..." if len(str(row.get('내용', ''))) > 50 else str(row.get('내용', ''))
+                st.markdown(
+                    f"<div style='padding:6px 0; font-size:13px;'>"
+                    f"<span style='color:#94a3b8; margin-right:10px;'>{row.get('일자','')}</span>"
+                    f"<span style='background:#eff6ff; color:#1d4ed8; padding:2px 8px; border-radius:99px; font-size:11px; margin-right:8px;'>{row.get('구분','')}</span>"
+                    f"<span style='color:#64748b;'>{preview if st.session_state['expanded_row'] != i else ''}</span>"
+                    f"</div>", unsafe_allow_html=True
+                )
+            with col_toggle:
+                if st.button("▼" if st.session_state["expanded_row"] != i else "▲", key=f"row_{i}"):
+                    st.session_state["expanded_row"] = None if st.session_state["expanded_row"] == i else i
+                    st.rerun()
+            if st.session_state["expanded_row"] == i:
+                st.markdown(
+                    f"<div style='background:#f8fafc; border-left:3px solid #2563eb; padding:12px 16px; border-radius:0 0 8px 8px; font-size:13px; color:#334155; line-height:1.7; white-space:pre-wrap;'>{row.get('내용','')}</div>",
+                    unsafe_allow_html=True
+                )
+            st.markdown("<hr style='margin:2px 0; border-color:#f1f5f9;'>", unsafe_allow_html=True)
     else:
-        category_filter = st.selectbox("정렬 카테고리 필터", ["전체 구분"] + list(final_df['구분'].dropna().unique()), key="feed_filter_box")
-        filtered_df = final_df.copy()
-        if category_filter != "전체 구분":
-            filtered_df = filtered_df[filtered_df['구분'] == category_filter]
-        
-        latest_df = filtered_df.tail(5).iloc[::-1]
-        for idx, row in latest_df.iterrows():
-            date_val = row.get('일자', '')
-            type_val = row.get('구분', '')
-            subtype_val = row.get('세부 구분', '')
-            content_val = str(row.get('내용', '')).replace('\n', '<br>')
-            author_val = row.get('면담자/작성자', row.get('면담자', '명시되지 않음'))
-            
-            st.markdown(f"""
-            <div style="background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px; border-left: 5px solid #2563eb;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <div>
-                        <span style="font-weight: bold; color: #1e3a8a; margin-right: 8px; font-size: 15px;">📅 {date_val}</span>
-                        <span style="background-color: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-right: 4px;">{type_val}</span>
-                        <span style="background-color: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 4px; font-size: 12px;">{subtype_val}</span>
+        st.warning("데이터를 불러올 수 없습니다. 구글 시트 연결을 확인해주세요.")
+
+# ── AI 분석 ──
+action_type = st.session_state["current_action"]
+
+if action_type and final_df is not None:
+    KEYWORD_MAP = {
+        "move_spot":  "이동|배치|스팟|전환|근무지|파견",
+        "attendance": "근태|지각|결근|조퇴|무단|휴가|병가",
+        "monthly":    "면담|월면담|정기|상담",
+        "review":     "리뷰|평가|근무|태도|중간|점검",
+        "growth":     "발전|향상|성장|습득|성취|도전|개선",
+        "hygiene":    "위생|청결|마스크|손씻기|복장|샤워|단정|양치",
+        "manual":     "매뉴얼|준수|미준수|제조|순서|레시피|수칙|실수",
+        "etiquette":  "예절|태도|인사|소통|동료|존중|갈등|경어|존댓말",
+        "others":     "기타|특이|사항|기록|종합",
+    }
+    CAT_NAMES = {
+        "opd_report": "OPD 종합 보고서", "move_spot": "근무지 이동",
+        "attendance": "근태 관리", "monthly": "월면담",
+        "review": "근무 리뷰", "growth": "업무 발전",
+        "hygiene": "개인 위생", "manual": "매뉴얼 준수",
+        "etiquette": "직장 예절", "others": "기타 사항",
+    }
+    category_name = CAT_NAMES.get(action_type, "")
+
+    if action_type == "opd_report":
+        display_df = final_df.copy()
+    else:
+        kw = KEYWORD_MAP.get(action_type, "")
+        display_df = final_df[
+            final_df['내용'].str.contains(kw, na=False, case=False) |
+            final_df['구분'].str.contains(kw, na=False, case=False)
+        ] if '내용' in final_df.columns else pd.DataFrame()
+
+    st.markdown("<hr style='margin:20px 0;'>", unsafe_allow_html=True)
+
+    if action_type != "opd_report":
+        st.markdown(f"#### 📋 [{category_name}] 관련 현장 기록 (총 {len(display_df)}건)")
+        st.dataframe(display_df, use_container_width=True)
+
+    if not display_df.empty:
+        if not st.session_state["ai_report_data"]:
+            with st.spinner("Gemini AI가 실시간 데이터를 분석 중입니다..."):
+                context = "\n".join([
+                    f"[{r.get('일자','')}] 구분: {r.get('구분','')}, 내용: {r.get('내용','')}"
+                    for _, r in display_df.tail(40).iterrows()
+                ])
+
+                if action_type == "opd_report":
+                    prompt = f"""당신은 장애인 표준사업장의 최고 전문 지도원입니다.
+제공된 데이터를 깊이 있게 분석하여 {selected_user} 크루의 OPD(One Page Description) 가이드를 작성하세요.
+구분선 부호인 [PART1], [PART2], [PART3], [PART4]를 반드시 포함하세요.
+
+[PART1] 강점
+(이 크루가 가진 성격적/업무적 강점을 상세하게 작성해주세요.)
+
+[PART2] 중요하게 여길 것 (건강과 안전)
+(스트레스 관리, 신체 안전을 위해 주의해야 할 점들을 작성해주세요.)
+
+[PART3] 중요하게 여길 것 (좋아하는 것, 소중한 것)
+(이 크루가 즐거워하거나 보람을 느끼는 것들을 작성해주세요.)
+
+[PART4] 잘 지원해줄 수 있는 방법
+(매니저들이 대화 시 주의해야 할 요령, 싫어하는 피드백 방식 등을 작성해주세요.)
+
+[누적 데이터]:
+{context}"""
+                else:
+                    prompt = f"""당신은 장애인 표준사업장의 지도원입니다.
+다음 [{category_name}] 데이터를 분석하여 4개 파트로 나누어 작성하세요.
+[PART1], [PART2], [PART3], [PART4] 구분선을 반드시 포함하세요.
+
+[PART1] 현재 상태 요약
+[PART2] 보완 및 누락점
+[PART3] 교육 지원 방향
+[PART4] 칭찬 및 격려 팁
+
+[데이터]:
+{context}"""
+
+                try:
+                    client = genai.Client(api_key=GEMINI_API_KEY)
+                    response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+                    raw = response.text
+
+                    parts = {"p1": "기록이 부족합니다.", "p2": "", "p3": "", "p4": ""}
+                    if "[PART1]" in raw and "[PART4]" in raw:
+                        parts["p1"] = raw.split("[PART1]")[1].split("[PART2]")[0].strip()
+                        parts["p2"] = raw.split("[PART2]")[1].split("[PART3]")[0].strip()
+                        parts["p3"] = raw.split("[PART3]")[1].split("[PART4]")[0].strip()
+                        parts["p4"] = raw.split("[PART4]")[1].strip()
+                    else:
+                        parts["p1"] = raw
+
+                    parts["context_data"] = context
+                    st.session_state["ai_report_data"] = parts
+                except Exception as e:
+                    st.error(f"구글 AI 통신 실패: {e}")
+
+        if st.session_state["ai_report_data"]:
+            report = st.session_state["ai_report_data"]
+
+            if action_type == "opd_report":
+                st.markdown(f"### 📋 {selected_user} 크루 마스터 One-Page Profile")
+                for cls, icon, title, key in [
+                    ("opd-strong",  "💪", f"1. {selected_user} 크루의 강점",                   "p1"),
+                    ("opd-warning", "⚠️", f"2. {selected_user}를 위해 중요한 것 (건강과 안전)", "p2"),
+                    ("opd-success", "❤️", f"3. {selected_user}에게 중요한 것 (좋아하는 것)",   "p3"),
+                    ("opd-danger",  "💡", f"4. {selected_user}를 잘 지원해줄 수 있는 방법",    "p4"),
+                ]:
+                    st.markdown(f"""
+                    <div class='opd-card {cls}'>
+                        <div class='opd-title'>{icon} {title}</div>
+                        <div class='opd-content'>{report.get(key,'').replace(chr(10),'<br>')}</div>
                     </div>
-                    <div style="font-size: 13px; color: #64748b;">작성자: <b>{author_val}</b></div>
-                </div>
-                <div style="font-size: 14.5px; color: #334155; line-height: 1.6; padding: 2px 5px;">
-                    {content_val}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-# 2️⃣ [AI분석] 탭 영역 (초기 버전 스마트 카테고리 자동화 완벽 작동형)
-elif st.session_state["active_tab"] == "AI분석":
-    st.markdown("<h3>🤖 Gemini AI 카테고리별 실시간 종합 브리핑</h3>", unsafe_allow_html=True)
-    if final_df.empty:
-        st.info("분석할 면담 히스토리 데이터가 없습니다.")
-    else:
-        with st.spinner("구글 고성능 제미나이 AI가 카테고리별로 데이터를 종단 스크리닝 중..."):
-            categories = ["월 면담", "근무 리뷰", "위생", "근태 관리"]
-            combined_context = ""
-            for cat in categories:
-                cat_df = final_df[final_df['구분'] == cat]
-                if not cat_df.empty:
-                    combined_context += f"■ [{cat}] 카테고리 데이터 (최근 기록순):\n"
-                    for _, row in cat_df.tail(10).iterrows():
-                        combined_context += f"- 일자: {row.get('일자','')}, 내용: {row.get('내용','')}\n"
-                    combined_context += "\n"
-            etc_df = final_df[~final_df['구분'].isin(categories)]
-            if not etc_df.empty:
-                combined_context += "■ [기타 사항] 카테고리 데이터:\n"
-                for _, row in etc_df.tail(5).iterrows():
-                    combined_context += f"- 일자: {row.get('일자','')}, 내용: {row.get('내용','')}\n"
-            
-            prompt = f"""당신은 장애인 표준사업장 최고 전문 지도원입니다. 
-            제공된 크루의 면담 데이터를 바탕으로, 반드시 아래 명시된 카테고리별로 구역을 나누어 가이드라인 리포트를 작성하세요.
-            이때 이모지(emoji)를 적절히 활용하여 매니저가 한눈에 읽기 쉽게 가독성을 극대화하세요.
-
-            [분석 요청 카테고리]
-            1. 📅 월 정기 면담 종합 요약
-            2. ☕ 현장 근무 리뷰 및 직무 수행 평가
-            3. ✨ 개인 위생 및 복장 규정 준수 상태
-            4. ⏰ 근태 관리 및 돌발 이슈 리스크 진단
-
-            데이터 내용:\n{combined_context}"""
-            
-            try:
-                client = genai.Client(api_key=GEMINI_API_KEY)
-                response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
-                st.markdown(f"""
-                <div style="background-color: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-top: 6px solid #10b981; line-height: 1.8;">
-                    {response.text}
-                </div>
-                """, unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"AI 통신 에러가 발생했습니다: {e}")
-
-# 3️⃣ [면담입력] 탭 영역
-elif st.session_state["active_tab"] == "면담입력":
-    st.subheader(f"➕ {selected_user} 크루 현장 면담 즉시 기록")
-    with st.form("interview_form", clear_on_submit=True):
-        col_d, col_g = st.columns(2)
-        with col_d: form_date = st.date_input("날짜 설정", datetime.date.today())
-        with col_g: form_cat = st.selectbox("대구분", ["월 면담", "근무 리뷰", "위생", "근태 관리", "기타 사항"])
-        col_s, col_w = st.columns(2)
-        with col_s: form_sub = st.selectbox("세부 구분", ["정기 면담", "오전 근무 점검", "오후 근무 점검", "돌발 이슈", "일반 관찰 기록"])
-        with col_w: form_author = st.text_input("면담자/작성자 이름", value="세라")
-        form_content = st.text_area("✍️ 구체적인 현장 관찰 및 면담 내용")
-        submit_btn = st.form_submit_button("🚀 구글 스프레드시트에 즉시 저장하기", use_container_width=True)
-        if submit_btn:
-            if form_content.strip() == "": st.error("❌ 내용을 입력하세요!")
-            elif worksheet_obj is None: st.error("❌ 권한 오류")
+                    """, unsafe_allow_html=True)
             else:
-                with st.spinner("저장 중..."):
-                    try:
-                        date_str = form_date.strftime("%y/%m/%d")
-                        new_row = [date_str, form_cat, form_sub, form_content, form_author, total_meetings + 1]
-                        worksheet_obj.append_row(new_row)
-                        st.success("🎉 구글 시트에 저장 완료!")
-                        time.sleep(1)
-                        st.rerun()
-                    except Exception as e: st.error(f"실패: {e}")
+                st.markdown("##### 🎯 핵심 맞춤형 AI 인사이트 탐색")
+                sc1, sc2, sc3, sc4 = st.columns(4)
+                view = st.session_state["selected_sub_view"]
+                sub_menus = [
+                    (sc1, "요약",  "📋 1. 상태 요약본"),
+                    (sc2, "보완",  "❌ 2. 누락/보완점"),
+                    (sc3, "교육",  "💡 3. 교육 지원 방향"),
+                    (sc4, "칭찬",  "👏 4. 칭찬 격려 팁"),
+                ]
+                for col, v, lbl in sub_menus:
+                    with col:
+                        st.markdown(f'<div class="{"active-sub-btn" if view == v else "sub-btn"}">', unsafe_allow_html=True)
+                        if st.button(lbl, key=f"sub_{v}"):
+                            st.session_state["selected_sub_view"] = v
+                            st.rerun()
+                        st.markdown('</div>', unsafe_allow_html=True)
+
+                vk = {"요약":"p1","보완":"p2","교육":"p3","칭찬":"p4"}[view]
+                st.markdown(f"<p style='font-size:13px; font-weight:700; color:#2563eb; margin-top:14px;'>🤖 Gemini AI 결과 → {view}</p>", unsafe_allow_html=True)
+                st.info(report.get(vk, "내용을 불러올 수 없습니다."))
+
+            # 추가 질문
+            st.markdown("<br><hr>", unsafe_allow_html=True)
+            with st.container(border=True):
+                st.markdown(f"### 🔍 Gemini AI에게 추가 질문하기")
+                st.caption("크루의 성향이나 대처법 등 궁금한 점을 자연어로 질문하세요.")
+                user_q = st.text_input(
+                    f"❓ [{selected_user}] 크루에 대해 더 알고 싶은 사항:",
+                    placeholder="예: 이 크루가 돌발 행동을 하려고 할 때 어떤 말로 제지하는 게 좋나요?"
+                )
+                if st.button("💬 심층 분석 질문 답변 받기"):
+                    if not user_q.strip():
+                        st.warning("질문을 입력해주세요!")
+                    else:
+                        with st.spinner("Gemini AI가 히스토리를 대조하여 가이드라인을 작성 중입니다..."):
+                            custom_prompt = f"""당신은 장애인 표준사업장의 베테랑 전문 지도원입니다.
+제공된 누적 데이터를 바탕으로 사용자의 질문에 친절하고 명확하게 답변해 주세요.
+매니저들이 현장에서 즉각 사용할 수 있는 실천 형태로 답변하세요.
+
+[사용자 질문]: {user_q}
+[누적 데이터]: {report.get('context_data', '')}"""
+                            try:
+                                client = genai.Client(api_key=GEMINI_API_KEY)
+                                resp = client.models.generate_content(model='gemini-2.5-flash', contents=custom_prompt)
+                                st.success(f"💡 [{selected_user}] 크루에 대한 답변")
+                                st.write(resp.text)
+                            except Exception as e:
+                                st.error(f"오류: {e}")
