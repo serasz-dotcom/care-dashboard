@@ -39,7 +39,7 @@ div.block-container { padding-top: 5rem !important; padding-bottom: 2rem !import
     width: 100%; height: 62px; font-size: 13.5px !important;
     border-radius: 12px; font-weight: 600;
     background-color: #ffffff !important; border: 1px solid #e2e8f0 !important;
-    color: #334155 !important; transition: all 0.15s ease-in-out;
+    color: #334155 !important;
 }
 .main-btn>button:hover {
     background-color: rgba(37,99,235,0.04) !important;
@@ -86,19 +86,60 @@ div.block-container { padding-top: 5rem !important; padding-bottom: 2rem !import
 # =========================================================================
 # ✏️ 설정 구역 — 여기만 수정하세요
 # =========================================================================
-SPOT_CONFIG = {
-    "사내카페 (kafe5)": {
-        "base_url": "https://docs.google.com/spreadsheets/d/1rRpq9zX7g70hX2uwRwA1enPY83KSK_lNOiJ1MGIOzqY",
+
+# 인원별 gid 관리 시트 URL (스팟/호칭/gid 표)
+EMPLOYEE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1iPzvekrGlzxcfaUt6wXY7oCU1KdqH3ZM27Gd8MffZA4/export?format=csv&gid=0"
+
+# 스팟별 면담일지 시트 URL + 비밀번호
+SPOT_CONFIG_BASE = {
+    "kafe5": {
+        "label": "사내카페 (kafe5)",
         "password": "kafe5",
-        "employees": ["루크", "휴버트", "오스틴"],
+        "base_url": "https://docs.google.com/spreadsheets/d/1rRpq9zX7g70hX2uwRwA1enPY83KSK_lNOiJ1MGIOzqY",
     },
+    # 스팟 추가 예시:
+    # "garden": {
+    #     "label": "조경팀",
+    #     "password": "garden2024",
+    #     "base_url": "https://docs.google.com/spreadsheets/d/시트ID",
+    # },
 }
-GEMINI_API_KEY =  "c1d5423b657ff8d3f312e557962be880da2ffd71"
+
+GEMINI_API_KEY = "c1d5423b657ff8d3f312e557962be880da2ffd71"
 # =========================================================================
 
+# 세션 초기화
 for key, val in [("logged_in_spot", None), ("current_action", None), ("ai_report_data", {}), ("selected_sub_view", "요약"), ("expanded_row", None)]:
     if key not in st.session_state:
         st.session_state[key] = val
+
+# 직원 목록 자동 로드 함수
+@st.cache_data(ttl=60)
+def load_employee_config(url):
+    try:
+        df = pd.read_csv(url)
+        df.columns = df.columns.str.strip()
+        config = {}
+        for _, row in df.iterrows():
+            spot = str(row['스팟']).strip()
+            name = str(row['호칭']).strip()
+            gid  = str(int(float(row['gid']))).strip()
+            if spot not in config:
+                config[spot] = {}
+            config[spot][name] = gid
+        return config
+    except Exception as e:
+        return {}
+
+# SPOT_CONFIG 자동 생성
+employee_config = load_employee_config(EMPLOYEE_SHEET_URL)
+SPOT_CONFIG = {}
+for spot_key, base in SPOT_CONFIG_BASE.items():
+    SPOT_CONFIG[base["label"]] = {
+        "base_url": base["base_url"],
+        "password": base["password"],
+        "employees": employee_config.get(spot_key, {}),
+    }
 
 # ── 로그인 ──
 if st.session_state["logged_in_spot"] is None:
@@ -119,7 +160,7 @@ if st.session_state["logged_in_spot"] is None:
                     st.rerun()
                 else:
                     st.error("❌ 비밀번호가 올바르지 않습니다.")
-        st.markdown('<p class="login-hint">비밀번호 문의: 교육스탭에게 문의주세요</p>', unsafe_allow_html=True)
+        st.markdown('<p class="login-hint">비밀번호 문의: 담당 매니저 세라에게 연락하세요</p>', unsafe_allow_html=True)
     st.stop()
 
 # ── 메인 ──
@@ -138,32 +179,32 @@ with col_logout:
 
 st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
+# 사이드바
 st.sidebar.markdown("### 👤 소속 크루 프로필 조회")
-employee_list = spot_data["employees"]
+employee_list = list(spot_data["employees"].keys())
+if not employee_list:
+    st.sidebar.warning("직원 목록을 불러올 수 없습니다.")
+    st.stop()
 selected_user = st.sidebar.selectbox("대상 크루를 선택하세요:", employee_list)
 st.sidebar.markdown("---")
 st.sidebar.caption(f"현재 선택된 스팟: **{current_spot}**")
 
-# 구글 시트 로드 (시트 탭 이름 방식)
+# 구글 시트 로드 (gid 방식)
 raw_url = spot_data["base_url"].strip().split("/edit")[0].split("/export")[0]
-sheet_url = f"{raw_url}/export?format=csv&sheet={urllib.parse.quote(selected_user)}&format=csv"
+gid = spot_data["employees"][selected_user]
+sheet_url = f"{raw_url}/export?format=csv&gid={gid}"
 
 @st.cache_data(ttl=5)
 def load_data(url):
     try:
-        # skiprows 없이 먼저 읽어서 헤더 위치 찾기
         df_raw = pd.read_csv(url, header=None)
-        
-        # '일자' 또는 '구분' 이 있는 행 찾기
         header_idx = None
         for i, row in df_raw.iterrows():
             if any(str(v).strip() in ['일자', '구분', '내용'] for v in row.values):
                 header_idx = i
                 break
-        
         if header_idx is None:
             return None
-            
         df = pd.read_csv(url, skiprows=header_idx)
         df.columns = df.columns.str.strip()
         for col in ['내용', '구분', '세부 구분']:
