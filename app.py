@@ -119,7 +119,7 @@ if st.session_state["logged_in_spot"] is None:
                     st.rerun()
                 else:
                     st.error("❌ 비밀번호가 올바르지 않습니다.")
-        st.markdown('<p class="login-hint">비밀번호 문의: 담당 매니저 세라에게 연락하세요</p>', unsafe_allow_html=True)
+        st.markdown('<p class="login-hint">비밀번호 문의: 교육스탭에게 문의주세요</p>', unsafe_allow_html=True)
     st.stop()
 
 # ── 메인 ──
