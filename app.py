@@ -151,7 +151,20 @@ sheet_url = f"{raw_url}/export?format=csv&sheet={urllib.parse.quote(selected_use
 @st.cache_data(ttl=5)
 def load_data(url):
     try:
-        df = pd.read_csv(url, skiprows=8)
+        # skiprows 없이 먼저 읽어서 헤더 위치 찾기
+        df_raw = pd.read_csv(url, header=None)
+        
+        # '일자' 또는 '구분' 이 있는 행 찾기
+        header_idx = None
+        for i, row in df_raw.iterrows():
+            if any(str(v).strip() in ['일자', '구분', '내용'] for v in row.values):
+                header_idx = i
+                break
+        
+        if header_idx is None:
+            return None
+            
+        df = pd.read_csv(url, skiprows=header_idx)
         df.columns = df.columns.str.strip()
         for col in ['내용', '구분', '세부 구분']:
             if col in df.columns:
