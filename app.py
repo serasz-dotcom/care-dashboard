@@ -93,7 +93,7 @@ SPOT_CONFIG = {
         "employees": ["루크", "휴버트", "오스틴"],
     },
 }
-GEMINI_API_KEY = "c1d5423b657ff8d3f312e557962be880da2ffd71"
+GEMINI_API_KEY =  "c1d5423b657ff8d3f312e557962be880da2ffd71"
 # =========================================================================
 
 for key, val in [("logged_in_spot", None), ("current_action", None), ("ai_report_data", {}), ("selected_sub_view", "요약"), ("expanded_row", None)]:
